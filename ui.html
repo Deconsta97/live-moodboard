@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--figma-color-bg, #2c2c2c);
+      color: var(--figma-color-text, #e0e0e0);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .input-bar {
+      display: flex;
+      gap: 6px;
+      padding: 10px;
+      border-bottom: 1px solid var(--figma-color-border, #444);
+      flex-shrink: 0;
+    }
+
+    .input-bar input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--figma-color-border, #555);
+      border-radius: 6px;
+      background: var(--figma-color-bg-secondary, #383838);
+      color: var(--figma-color-text, #e0e0e0);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .input-bar input:focus {
+      border-color: var(--figma-color-border-brand, #0d99ff);
+    }
+
+    .input-bar input::placeholder {
+      color: var(--figma-color-text-tertiary, #888);
+    }
+
+    .input-bar button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      background: var(--figma-color-bg-brand, #0d99ff);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .input-bar button:hover { opacity: 0.9; }
+    .input-bar button:disabled { opacity: 0.5; cursor: default; }
+
+    .device-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--figma-color-border, #444);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+
+    .device-bar button {
+      padding: 4px 8px;
+      border: 1px solid var(--figma-color-border, #555);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--figma-color-text-secondary, #aaa);
+      font-size: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .device-bar button:hover {
+      border-color: var(--figma-color-border-brand, #0d99ff);
+      color: var(--figma-color-text, #e0e0e0);
+    }
+
+    .device-bar button.active {
+      background: var(--figma-color-bg-brand, #0d99ff);
+      border-color: var(--figma-color-bg-brand, #0d99ff);
+      color: #fff;
+    }
+
+    .device-bar .separator {
+      width: 1px;
+      height: 16px;
+      background: var(--figma-color-border, #444);
+      flex-shrink: 0;
+    }
+
+    .device-bar .custom-size {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: auto;
+    }
+
+    .device-bar .custom-size input {
+      width: 44px;
+      padding: 3px 4px;
+      border: 1px solid var(--figma-color-border, #555);
+      border-radius: 4px;
+      background: var(--figma-color-bg-secondary, #383838);
+      color: var(--figma-color-text, #e0e0e0);
+      font-size: 10px;
+      text-align: center;
+      outline: none;
+    }
+
+    .device-bar .custom-size input:focus {
+      border-color: var(--figma-color-border-brand, #0d99ff);
+    }
+
+    .device-bar .custom-size span {
+      font-size: 10px;
+      color: var(--figma-color-text-tertiary, #888);
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--figma-color-text-secondary, #aaa);
+      border-bottom: 1px solid var(--figma-color-border, #444);
+      flex-shrink: 0;
+    }
+
+    .status-bar a {
+      color: var(--figma-color-text-brand, #0d99ff);
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .status-bar a:hover { text-decoration: underline; }
+
+    .preview-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview-area iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .empty-state .title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--figma-color-text, #e0e0e0);
+    }
+
+    .empty-state .hint {
+      font-size: 11px;
+      color: var(--figma-color-text-secondary, #aaa);
+      line-height: 1.5;
+      max-width: 260px;
+    }
+
+    .hidden { display: none !important; }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid var(--figma-color-border, #444);
+      border-top-color: var(--figma-color-bg-brand, #0d99ff);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .blocked-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .blocked-state .blocked-icon {
+      font-size: 28px;
+      opacity: 0.6;
+    }
+
+    .blocked-state .blocked-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--figma-color-text, #e0e0e0);
+    }
+
+    .blocked-state .blocked-hint {
+      font-size: 11px;
+      color: var(--figma-color-text-secondary, #aaa);
+      line-height: 1.5;
+      max-width: 280px;
+    }
+
+    .blocked-state button {
+      margin-top: 4px;
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      background: var(--figma-color-bg-brand, #0d99ff);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .blocked-state button:hover { opacity: 0.9; }
+
+    .loading-state .loading-label {
+      font-size: 12px;
+      color: var(--figma-color-text-secondary, #aaa);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="input-bar">
+    <input type="text" id="urlInput" placeholder="Paste a URL (e.g. https://codepen.io/...)" />
+    <button id="addBtn">Add Card</button>
+  </div>
+
+  <div class="device-bar" id="deviceBar">
+    <button data-w="1920" data-h="1080" title="1920 x 1080">FHD</button>
+    <button data-w="1440" data-h="900" title="1440 x 900">Desktop</button>
+    <button data-w="1024" data-h="768" title="1024 x 768">Tablet L</button>
+    <button data-w="768" data-h="1024" title="768 x 1024">Tablet</button>
+    <button data-w="430" data-h="932" title="430 x 932">Phone</button>
+    <button data-w="375" data-h="812" title="375 x 812">Phone S</button>
+    <div class="separator"></div>
+    <div class="custom-size">
+      <input type="number" id="customW" placeholder="W" />
+      <span>x</span>
+      <input type="number" id="customH" placeholder="H" />
+      <button id="customApply" title="Apply custom size">Go</button>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <span id="statusText">Paste a URL and add it to your moodboard</span>
+    <a id="openBtn" class="hidden" onclick="openInBrowser()">Open in browser</a>
+  </div>
+
+  <div class="preview-area" id="previewArea">
+    <div class="empty-state" id="emptyState">
+      <div class="title">No preview loaded</div>
+      <div class="hint">
+        Add a URL above to create a moodboard card, or select an existing card on the canvas.
+        <br /><br />
+        Some sites block iframe embedding — if a preview is blank, use "Open in browser" instead.
+      </div>
+    </div>
+    <div class="loading-state hidden" id="loadingState">
+      <div class="spinner"></div>
+      <div class="loading-label">Fetching site info...<br />(first fetch may take a few seconds)</div>
+    </div>
+    <div class="blocked-state hidden" id="blockedState">
+      <div class="blocked-icon">&#x1F6AB;</div>
+      <div class="blocked-title">This site blocks embedding</div>
+      <div class="blocked-hint">
+        This website sets security headers that prevent it from being displayed inside an iframe. This is a browser-level restriction and cannot be bypassed.
+      </div>
+      <button onclick="openInBrowser()">Open in browser instead</button>
+    </div>
+    <iframe id="preview" class="hidden"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+      allow="autoplay; fullscreen"
+    ></iframe>
+  </div>
+
+  <script>
+    var urlInput = document.getElementById('urlInput');
+    var addBtn = document.getElementById('addBtn');
+    var statusText = document.getElementById('statusText');
+    var openBtn = document.getElementById('openBtn');
+    var emptyState = document.getElementById('emptyState');
+    var preview = document.getElementById('preview');
+    var customW = document.getElementById('customW');
+    var customH = document.getElementById('customH');
+    var customApply = document.getElementById('customApply');
+
+    var loadingState = document.getElementById('loadingState');
+    var blockedState = document.getElementById('blockedState');
+
+    var currentUrl = '';
+    var blockedCheckTimer = null;
+
+    // Known domains that block iframe embedding
+    var BLOCKED_DOMAINS = [
+      'google.com', 'youtube.com', 'facebook.com', 'instagram.com',
+      'twitter.com', 'x.com', 'linkedin.com', 'github.com',
+      'whatsapp.com', 'spotify.com', 'netflix.com', 'reddit.com',
+      'amazon.com', 'apple.com', 'microsoft.com', 'figma.com',
+      'notion.so', 'slack.com', 'discord.com', 'tiktok.com',
+      'pinterest.com', 'twitch.tv', 'ollama.com', 'medium.com',
+      'stackoverflow.com', 'wikipedia.org', 'codepen.io'
+    ];
+
+    function isKnownBlocked(hostname) {
+      var h = hostname.toLowerCase();
+      for (var i = 0; i < BLOCKED_DOMAINS.length; i++) {
+        if (h === BLOCKED_DOMAINS[i] || h.endsWith('.' + BLOCKED_DOMAINS[i])) return true;
+      }
+      return false;
+    }
+
+    // ── Device presets ──────────────────────────────────────────
+
+    var presetButtons = document.querySelectorAll('.device-bar button[data-w]');
+
+    presetButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var w = parseInt(btn.getAttribute('data-w'));
+        var h = parseInt(btn.getAttribute('data-h'));
+        applySize(w, h, btn);
+      });
+    });
+
+    customApply.addEventListener('click', function () {
+      var w = parseInt(customW.value);
+      var h = parseInt(customH.value);
+      if (w > 0 && h > 0) applySize(w, h, null);
+    });
+
+    function applySize(w, h, activeBtn) {
+      var panelW = Math.max(300, Math.min(w + 2, 2000));
+      var panelH = Math.max(400, Math.min(h + 120, 2000));
+      presetButtons.forEach(function (b) { b.classList.remove('active'); });
+      if (activeBtn) activeBtn.classList.add('active');
+      customW.value = w;
+      customH.value = h;
+      sendToPlugin('resize-panel', { width: panelW, height: panelH });
+    }
+
+    // ── Messaging ───────────────────────────────────────────────
+
+    function sendToPlugin(type, data) {
+      parent.postMessage({ pluginMessage: { type: type, ...(data || {}) } }, '*');
+    }
+
+    var pendingOgImageBytes = null;
+    var pendingFaviconBytes = null;
+
+    window.onmessage = function (event) {
+      var msg = event.data.pluginMessage;
+      if (!msg) return;
+      if (msg.type === 'load-url') {
+        urlInput.value = msg.url;
+        loadPreview(msg.url, msg.label);
+      }
+      if (msg.type === 'no-selection') {
+        showEmptyState();
+      }
+      if (msg.type === 'card-created') {
+        // Card is on canvas — now send images separately
+        var cardId = msg.cardId;
+        if (pendingOgImageBytes) {
+          sendToPlugin('set-thumbnail', { cardId: cardId, imageBytes: pendingOgImageBytes });
+          pendingOgImageBytes = null;
+        }
+        if (pendingFaviconBytes) {
+          sendToPlugin('set-favicon', { cardId: cardId, imageBytes: pendingFaviconBytes });
+          pendingFaviconBytes = null;
+        }
+      }
+    };
+
+    // ── Preview ─────────────────────────────────────────────────
+
+    function hideAllStates() {
+      emptyState.classList.add('hidden');
+      loadingState.classList.add('hidden');
+      blockedState.classList.add('hidden');
+      preview.classList.add('hidden');
+      if (blockedCheckTimer) { clearTimeout(blockedCheckTimer); blockedCheckTimer = null; }
+    }
+
+    function showBlockedState() {
+      hideAllStates();
+      blockedState.classList.remove('hidden');
+      openBtn.classList.remove('hidden');
+    }
+
+    function loadPreview(url, label) {
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      try { new URL(url); } catch (e) { statusText.textContent = 'Invalid URL'; return; }
+
+      currentUrl = url;
+      var hostname = new URL(url).hostname;
+
+      // Instant detection for known blocked domains
+      if (isKnownBlocked(hostname)) {
+        statusText.textContent = hostname + ' blocks embedding';
+        openBtn.classList.remove('hidden');
+        showBlockedState();
+        return;
+      }
+
+      hideAllStates();
+      statusText.textContent = 'Loading: ' + (label || url);
+      openBtn.classList.remove('hidden');
+      preview.classList.remove('hidden');
+      preview.src = url;
+
+      preview.onload = function () {
+        statusText.textContent = label || hostname;
+      };
+
+      // Fallback: if iframe is blank after 8s, likely blocked
+      blockedCheckTimer = setTimeout(function () {
+        try {
+          // Try to read iframe — cross-origin will throw, which is fine (site loaded)
+          // But if the iframe loaded nothing (blocked), it may be about:blank
+          var loc = preview.contentWindow.location.href;
+          if (loc === 'about:blank' || !loc) {
+            showBlockedState();
+            statusText.textContent = hostname + ' may block embedding';
+          }
+        } catch (e) {
+          // Cross-origin error = site DID load (just can't read it), so it's fine
+        }
+      }, 8000);
+    }
+
+    function showEmptyState() {
+      currentUrl = '';
+      hideAllStates();
+      emptyState.classList.remove('hidden');
+      openBtn.classList.add('hidden');
+      statusText.textContent = 'Paste a URL and add it to your moodboard';
+    }
+
+    function openInBrowser() {
+      if (currentUrl) window.open(currentUrl, '_blank');
+    }
+
+    // ── Fetch metadata via Microlink API (CORS-friendly) ──────
+
+    async function fetchImageBytes(imgUrl) {
+      // Proxy through wsrv.nl to avoid CORS blocks on original image servers
+      var proxyUrl = 'https://wsrv.nl/?url=' + encodeURIComponent(imgUrl) + '&output=png';
+      try {
+        var res = await fetch(proxyUrl);
+        if (!res.ok) return null;
+        var buf = await res.arrayBuffer();
+        return Array.from(new Uint8Array(buf));
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function fetchMetadata(url) {
+      var hostname = new URL(url).hostname;
+      var result = { title: hostname, ogImageBytes: null, faviconBytes: null };
+
+      // Use Microlink API — free, no key, returns OG data with CORS headers
+      try {
+        var apiUrl = 'https://api.microlink.io/?url=' + encodeURIComponent(url);
+        var res = await fetch(apiUrl);
+        if (res.ok) {
+          var json = await res.json();
+          var data = json.data || {};
+
+          // Title
+          if (data.title) {
+            result.title = data.title;
+          }
+
+          // OG image
+          if (data.image && data.image.url) {
+            result.ogImageBytes = await fetchImageBytes(data.image.url);
+          }
+
+          // Favicon / logo
+          if (data.logo && data.logo.url) {
+            result.faviconBytes = await fetchImageBytes(data.logo.url);
+          }
+        }
+      } catch (e) {
+        // API failed — use fallbacks
+      }
+
+      return result;
+    }
+
+    // ── Add card ────────────────────────────────────────────────
+
+    addBtn.onclick = async function () {
+      var url = urlInput.value.trim();
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+      var parsed;
+      try { parsed = new URL(url); } catch (e) { statusText.textContent = 'Invalid URL'; return; }
+
+      // Show loading states
+      addBtn.disabled = true;
+      addBtn.textContent = 'Fetching...';
+      statusText.textContent = 'Fetching site metadata...';
+      emptyState.classList.add('hidden');
+      preview.classList.add('hidden');
+      loadingState.classList.remove('hidden');
+
+      // Create placeholder on canvas immediately
+      pendingOgImageBytes = null;
+      pendingFaviconBytes = null;
+      sendToPlugin('create-placeholder', { url: url, label: parsed.hostname });
+
+      // Fetch metadata (UI-side, no round-trip dependency)
+      var meta = await fetchMetadata(url);
+
+      // Store image bytes — sent after sandbox confirms card-created
+      pendingOgImageBytes = meta.ogImageBytes;
+      pendingFaviconBytes = meta.faviconBytes;
+
+      // Sandbox finds + deletes placeholder by URL marker, creates real card
+      sendToPlugin('create-card', {
+        url: url,
+        label: parsed.hostname,
+        title: meta.title
+      });
+
+      // Hide loading, restore button
+      loadingState.classList.add('hidden');
+      addBtn.disabled = false;
+      addBtn.textContent = 'Add Card';
+    };
+
+    urlInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') addBtn.click();
+    });
+
+    sendToPlugin('ui-ready', {});
+  </script>
+
+</body>
+</html>

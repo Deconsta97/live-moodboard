@@ -1,0 +1,19 @@
+{
+  "name": "Live Moodboard",
+  "id": "1700000000000000001",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "documentAccess": "dynamic-page",
+  "editorType": [
+    "figma"
+  ],
+  "networkAccess": {
+    "allowedDomains": [
+      "*"
+    ],
+    "reasoning": "Loads user-provided URLs in an iframe for live moodboard previews. Any domain must be allowed since reference sites are arbitrary."
+  }
+}
