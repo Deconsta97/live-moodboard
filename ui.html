@@ -381,8 +381,7 @@
       parent.postMessage({ pluginMessage: { type: type, ...(data || {}) } }, '*');
     }
 
-    var pendingOgImageBytes = null;
-    var pendingFaviconBytes = null;
+    var pendingImages = new Map();  // operationId → { ogImageBytes, faviconBytes }
 
     window.onmessage = function (event) {
       var msg = event.data.pluginMessage;
@@ -397,13 +396,16 @@
       if (msg.type === 'card-created') {
         // Card is on canvas — now send images separately
         var cardId = msg.cardId;
-        if (pendingOgImageBytes) {
-          sendToPlugin('set-thumbnail', { cardId: cardId, imageBytes: pendingOgImageBytes });
-          pendingOgImageBytes = null;
-        }
-        if (pendingFaviconBytes) {
-          sendToPlugin('set-favicon', { cardId: cardId, imageBytes: pendingFaviconBytes });
-          pendingFaviconBytes = null;
+        var operationId = msg.operationId;
+        var images = pendingImages.get(operationId);
+        if (images) {
+          if (images.ogImageBytes) {
+            sendToPlugin('set-thumbnail', { cardId: cardId, imageBytes: images.ogImageBytes });
+          }
+          if (images.faviconBytes) {
+            sendToPlugin('set-favicon', { cardId: cardId, imageBytes: images.faviconBytes });
+          }
+          pendingImages.delete(operationId);
         }
       }
     };
@@ -546,6 +548,21 @@
       var parsed;
       try { parsed = new URL(url); } catch (e) { statusText.textContent = 'Invalid URL'; return; }
 
+      // Validate protocol (http/https only)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        statusText.textContent = 'Invalid URL — only http/https supported';
+        return;
+      }
+
+      // Validate hostname (must have domain or be localhost)
+      if (!parsed.hostname.includes('.') && parsed.hostname !== 'localhost') {
+        statusText.textContent = 'Invalid URL — must be a valid domain';
+        return;
+      }
+
+      // Generate unique operation ID for this add (URL + timestamp)
+      var operationId = url + ':' + Date.now();
+
       // Show loading states
       addBtn.disabled = true;
       addBtn.textContent = 'Fetching...';
@@ -555,22 +572,20 @@
       loadingState.classList.remove('hidden');
 
       // Create placeholder on canvas immediately
-      pendingOgImageBytes = null;
-      pendingFaviconBytes = null;
       sendToPlugin('create-placeholder', { url: url, label: parsed.hostname });
 
       // Fetch metadata (UI-side, no round-trip dependency)
       var meta = await fetchMetadata(url);
 
-      // Store image bytes — sent after sandbox confirms card-created
-      pendingOgImageBytes = meta.ogImageBytes;
-      pendingFaviconBytes = meta.faviconBytes;
+      // Store image bytes under operation ID — sent after sandbox confirms card-created
+      pendingImages.set(operationId, { ogImageBytes: meta.ogImageBytes, faviconBytes: meta.faviconBytes });
 
       // Sandbox finds + deletes placeholder by URL marker, creates real card
       sendToPlugin('create-card', {
         url: url,
         label: parsed.hostname,
-        title: meta.title
+        title: meta.title,
+        operationId: operationId
       });
 
       // Hide loading, restore button

@@ -13,6 +13,7 @@ interface CardMsg {
   url: string;
   label: string;
   title: string;
+  operationId: string;
 }
 
 interface SetImageMsg {
@@ -124,11 +125,11 @@ async function createPlaceholder(url: string, label: string) {
 
 // ── Card creation (finds + deletes placeholder by marker) ──────
 
-async function createCard(msg: CardMsg): Promise<string> {
+async function createCard(msg: CardMsg): Promise<{ cardId: string; operationId: string }> {
   await figma.loadFontAsync({ family: "Inter", style: "Medium" });
   await figma.loadFontAsync({ family: "Inter", style: "Regular" });
 
-  const { url, label, title } = msg;
+  const { url, label, title, operationId } = msg;
 
   // Find placeholder by marker — no ID round-trip needed
   let posX = 0;
@@ -260,7 +261,7 @@ async function createCard(msg: CardMsg): Promise<string> {
 
   figma.ui.postMessage({ type: "load-url", url, label });
 
-  return card.id;
+  return { cardId: card.id, operationId };
 }
 
 // ── Image updates (separate messages) ──────────────────────────
@@ -332,8 +333,8 @@ figma.ui.onmessage = async (msg: PluginMsg) => {
     await createPlaceholder(m.url, m.label);
   }
   if (msg.type === "create-card") {
-    const cardId = await createCard(msg as CardMsg);
-    figma.ui.postMessage({ type: "card-created", cardId });
+    const result = await createCard(msg as CardMsg);
+    figma.ui.postMessage({ type: "card-created", cardId: result.cardId, operationId: result.operationId });
   }
   if (msg.type === "set-thumbnail") {
     const m = msg as SetImageMsg;
