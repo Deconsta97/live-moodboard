@@ -265,8 +265,8 @@ async function createCard(msg: CardMsg): Promise<string> {
 
 // ── Image updates (separate messages) ──────────────────────────
 
-function setThumbnail(cardId: string, imageBytes: number[]) {
-  const node = figma.getNodeById(cardId);
+async function setThumbnail(cardId: string, imageBytes: number[]) {
+  const node = await figma.getNodeByIdAsync(cardId);
   if (!node || node.type !== "FRAME") return;
 
   const thumb = (node as FrameNode).findChild(n => n.name === "thumbnail") as FrameNode | null;
@@ -280,8 +280,8 @@ function setThumbnail(cardId: string, imageBytes: number[]) {
   }
 }
 
-function setFavicon(cardId: string, imageBytes: number[]) {
-  const node = figma.getNodeById(cardId);
+async function setFavicon(cardId: string, imageBytes: number[]) {
+  const node = await figma.getNodeByIdAsync(cardId);
   if (!node || node.type !== "FRAME") return;
 
   const info = (node as FrameNode).findChild(n => n.name === "info") as FrameNode | null;
@@ -337,11 +337,11 @@ figma.ui.onmessage = async (msg: PluginMsg) => {
   }
   if (msg.type === "set-thumbnail") {
     const m = msg as SetImageMsg;
-    setThumbnail(m.cardId, m.imageBytes);
+    await setThumbnail(m.cardId, m.imageBytes);
   }
   if (msg.type === "set-favicon") {
     const m = msg as SetImageMsg;
-    setFavicon(m.cardId, m.imageBytes);
+    await setFavicon(m.cardId, m.imageBytes);
   }
   if (msg.type === "resize-panel") {
     const r = msg as ResizeMsg;

@@ -480,14 +480,24 @@
     // ── Fetch metadata via Microlink API (CORS-friendly) ──────
 
     async function fetchImageBytes(imgUrl) {
-      // Proxy through wsrv.nl to avoid CORS blocks on original image servers
-      var proxyUrl = 'https://wsrv.nl/?url=' + encodeURIComponent(imgUrl) + '&output=png';
+      // Try direct fetch first (works when CDN has CORS headers)
       try {
-        var res = await fetch(proxyUrl);
-        if (!res.ok) return null;
-        var buf = await res.arrayBuffer();
-        return Array.from(new Uint8Array(buf));
+        var res = await fetch(imgUrl);
+        if (res.ok) {
+          var buf = await res.arrayBuffer();
+          return Array.from(new Uint8Array(buf));
+        }
       } catch (e) {
+        // CORS blocked — try proxy fallback
+      }
+      // Fallback: proxy through wsrv.nl for CORS-blocked servers
+      try {
+        var proxyUrl = 'https://wsrv.nl/?url=' + encodeURIComponent(imgUrl) + '&output=png';
+        var res2 = await fetch(proxyUrl);
+        if (!res2.ok) return null;
+        var buf2 = await res2.arrayBuffer();
+        return Array.from(new Uint8Array(buf2));
+      } catch (e2) {
         return null;
       }
     }
