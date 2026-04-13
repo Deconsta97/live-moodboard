@@ -32,7 +32,12 @@ interface SimpleMsg {
   type: "ui-ready";
 }
 
-type PluginMsg = PlaceholderMsg | CardMsg | SetImageMsg | ResizeMsg | SimpleMsg;
+interface NotifyMsg {
+  type: "notify";
+  message: string;
+}
+
+type PluginMsg = PlaceholderMsg | CardMsg | SetImageMsg | ResizeMsg | SimpleMsg | NotifyMsg;
 
 // ── Constants ──────────────────────────────────────────────────
 
@@ -350,5 +355,9 @@ figma.ui.onmessage = async (msg: PluginMsg) => {
   }
   if (msg.type === "ui-ready") {
     handleSelectionChange();
+  }
+  if (msg.type === "notify") {
+    const m = msg as NotifyMsg;
+    figma.notify(m.message);
   }
 };

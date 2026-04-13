@@ -23,7 +23,6 @@
     }
 
     .input-bar input {
-      flex: 1;
       padding: 6px 10px;
       border: 1px solid var(--figma-color-border, #555);
       border-radius: 6px;
@@ -89,7 +88,8 @@
       color: #fff;
     }
 
-    .device-bar .separator {
+    .device-bar .separator,
+    .status-bar .separator {
       width: 1px;
       height: 16px;
       background: var(--figma-color-border, #444);
@@ -259,7 +259,10 @@
 <body>
 
   <div class="input-bar">
-    <input type="text" id="urlInput" placeholder="Paste a URL (e.g. https://codepen.io/...)" />
+    <div style="position:relative;flex:1;display:flex;">
+      <input type="text" id="urlInput" placeholder="Paste a URL (e.g. https://codepen.io/...)" style="flex:1;padding-right:24px;" />
+      <button id="clearBtn" type="button" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--figma-color-text-tertiary,#888);font-size:14px;cursor:pointer;padding:2px 4px;line-height:1;display:none;" title="Clear URL">&times;</button>
+    </div>
     <button id="addBtn">Add Card</button>
   </div>
 
@@ -281,7 +284,11 @@
 
   <div class="status-bar" id="statusBar">
     <span id="statusText">Paste a URL and add it to your moodboard</span>
-    <a id="openBtn" class="hidden" onclick="openInBrowser()">Open in browser</a>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a id="reportBtn" class="hidden" onclick="reportSite()">Report blank/blocked site</a>
+      <div class="separator hidden" id="statusSeparator"></div>
+      <a id="openBtn" class="hidden" onclick="openInBrowser()">Open in browser</a>
+    </div>
   </div>
 
   <div class="preview-area" id="previewArea">
@@ -299,8 +306,8 @@
     </div>
     <div class="blocked-state hidden" id="blockedState">
       <div class="blocked-icon">&#x1F6AB;</div>
-      <div class="blocked-title">This site blocks embedding</div>
-      <div class="blocked-hint">
+      <div class="blocked-title" id="blockedTitle">This site blocks embedding</div>
+      <div class="blocked-hint" id="blockedHint">
         This website sets security headers that prevent it from being displayed inside an iframe. This is a browser-level restriction and cannot be bypassed.
       </div>
       <button onclick="openInBrowser()">Open in browser instead</button>
@@ -324,27 +331,52 @@
 
     var loadingState = document.getElementById('loadingState');
     var blockedState = document.getElementById('blockedState');
+    var blockedTitle = document.getElementById('blockedTitle');
+    var blockedHint = document.getElementById('blockedHint');
+    var reportBtn = document.getElementById('reportBtn');
+    var statusSeparator = document.getElementById('statusSeparator');
+
+    var clearBtn = document.getElementById('clearBtn');
 
     var currentUrl = '';
     var blockedCheckTimer = null;
 
-    // Known domains that block iframe embedding
+    // Known domains confirmed blocked in both our plugin AND Frame Browser
+    // All other domains get try-first treatment (iframe attempt + timeout detection)
+    // See TEST LINKS.md for full test data
     var BLOCKED_DOMAINS = [
-      'google.com', 'youtube.com', 'facebook.com', 'instagram.com',
-      'twitter.com', 'x.com', 'linkedin.com', 'github.com',
-      'whatsapp.com', 'spotify.com', 'netflix.com', 'reddit.com',
-      'amazon.com', 'apple.com', 'microsoft.com', 'figma.com',
-      'notion.so', 'slack.com', 'discord.com', 'tiktok.com',
-      'pinterest.com', 'twitch.tv', 'ollama.com', 'medium.com',
-      'stackoverflow.com', 'wikipedia.org', 'codepen.io'
+      'google.com',        // X-Frame-Options: deny
+      'youtube.com',       // X-Frame-Options: deny
+      'facebook.com',      // X-Frame-Options: deny
+      'instagram.com',     // X-Frame-Options: deny
+      'x.com',             // X-Frame-Options: deny (twitter.com redirects here)
+      'linkedin.com',      // CSP frame-ancestors
+      'github.com',        // CSP frame-ancestors 'none'
+      'whatsapp.com',      // X-Frame-Options: deny
+      'spotify.com',       // CSP frame-ancestors
+      'netflix.com',       // X-Frame-Options: deny
+      'reddit.com',        // X-Frame-Options: sameorigin
+      'amazon.com',        // Bot detection (challenge.js)
+      'apple.com',         // X-Frame-Options: sameorigin
+      'figma.com',         // X-Frame-Options: sameorigin
+      'notion.so',         // CSP frame-ancestors
+      'slack.com',         // X-Frame-Options: sameorigin
+      'discord.com',       // X-Frame-Options: deny
+      'tiktok.com',        // CSP frame-ancestors
+      'pinterest.com',     // CSP frame-ancestors
+      'twitch.tv',         // X-Frame-Options: sameorigin
+      'ollama.com',        // X-Frame-Options: deny
+      'medium.com',        // CSP frame-ancestors
+      'stackoverflow.com', // CSP frame-ancestors
+      'image-line.com',    // CSP frame-ancestors
+      'codepen.io'         // X-Frame-Options: sameorigin
     ];
 
     function isKnownBlocked(hostname) {
       var h = hostname.toLowerCase();
-      for (var i = 0; i < BLOCKED_DOMAINS.length; i++) {
-        if (h === BLOCKED_DOMAINS[i] || h.endsWith('.' + BLOCKED_DOMAINS[i])) return true;
-      }
-      return false;
+      // Strip www. prefix for matching so both google.com and www.google.com hit the list
+      var bare = h.startsWith('www.') ? h.slice(4) : h;
+      return BLOCKED_DOMAINS.indexOf(bare) !== -1;
     }
 
     // ── Device presets ──────────────────────────────────────────
@@ -420,10 +452,20 @@
       if (blockedCheckTimer) { clearTimeout(blockedCheckTimer); blockedCheckTimer = null; }
     }
 
-    function showBlockedState() {
+    function showBlockedState(type) {
       hideAllStates();
       blockedState.classList.remove('hidden');
       openBtn.classList.remove('hidden');
+      reportBtn.classList.remove('hidden');
+      statusSeparator.classList.remove('hidden');
+
+      if (type === 'known') {
+        blockedTitle.textContent = 'This site blocks embedded previews';
+        blockedHint.textContent = 'We know this site prevents iframe embedding. Help us keep this list accurate \u2014 report if this seems wrong.';
+      } else {
+        blockedTitle.textContent = "This site couldn\u2019t be loaded";
+        blockedHint.textContent = "The site didn\u2019t respond to our embed attempt. It may block iframe previews or be temporarily unavailable.";
+      }
     }
 
     function loadPreview(url, label) {
@@ -433,17 +475,19 @@
       currentUrl = url;
       var hostname = new URL(url).hostname;
 
-      // Instant detection for known blocked domains
+      // Instant detection for confirmed blocked domains
       if (isKnownBlocked(hostname)) {
         statusText.textContent = hostname + ' blocks embedding';
         openBtn.classList.remove('hidden');
-        showBlockedState();
+        showBlockedState('known');
         return;
       }
 
       hideAllStates();
       statusText.textContent = 'Loading: ' + (label || url);
       openBtn.classList.remove('hidden');
+      reportBtn.classList.remove('hidden');
+      statusSeparator.classList.remove('hidden');
       preview.classList.remove('hidden');
       preview.src = url;
 
@@ -458,7 +502,7 @@
           // But if the iframe loaded nothing (blocked), it may be about:blank
           var loc = preview.contentWindow.location.href;
           if (loc === 'about:blank' || !loc) {
-            showBlockedState();
+            showBlockedState('detected');
             statusText.textContent = hostname + ' may block embedding';
           }
         } catch (e) {
@@ -472,11 +516,20 @@
       hideAllStates();
       emptyState.classList.remove('hidden');
       openBtn.classList.add('hidden');
+      reportBtn.classList.add('hidden');
+      statusSeparator.classList.add('hidden');
       statusText.textContent = 'Paste a URL and add it to your moodboard';
     }
 
     function openInBrowser() {
       if (currentUrl) window.open(currentUrl, '_blank');
+    }
+
+    function reportSite() {
+      // Placeholder — future: open report form or send to backend
+      if (currentUrl) {
+        sendToPlugin('notify', { message: 'Report feature coming soon. URL copied: ' + new URL(currentUrl).hostname });
+      }
     }
 
     // ── Fetch metadata via Microlink API (CORS-friendly) ──────
@@ -596,6 +649,17 @@
 
     urlInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') addBtn.click();
+    });
+
+    // Show/hide clear button based on input content
+    function updateClearBtn() {
+      clearBtn.style.display = urlInput.value.length > 0 ? 'block' : 'none';
+    }
+    urlInput.addEventListener('input', updateClearBtn);
+    clearBtn.addEventListener('click', function () {
+      urlInput.value = '';
+      updateClearBtn();
+      urlInput.focus();
     });
 
     sendToPlugin('ui-ready', {});
