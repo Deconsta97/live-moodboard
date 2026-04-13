@@ -142,7 +142,7 @@ async function createCard(msg: CardMsg): Promise<{ cardId: string; operationId: 
   let hadPlaceholder = false;
 
   const pending = figma.currentPage.findOne(
-    n => n.getPluginData("moodboard-pending") === url
+    n => typeof n.getPluginData === "function" && n.getPluginData("moodboard-pending") === url
   );
   if (pending && "x" in pending) {
     posX = (pending as SceneNode).x;
@@ -318,6 +318,10 @@ function handleSelectionChange() {
   const sel = figma.currentPage.selection;
   if (sel.length === 1) {
     const node = sel[0];
+    if (typeof node.getPluginData !== "function") {
+      figma.ui.postMessage({ type: "no-selection" });
+      return;
+    }
     const url = node.getPluginData("moodboard-url");
     if (url) {
       const label = node.getPluginData("moodboard-label") || "";
