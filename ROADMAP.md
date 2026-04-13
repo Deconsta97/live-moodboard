@@ -6,6 +6,10 @@
 - ✅ Canvas card creation (FigJam-style layout)
 - ✅ Microlink API for OG metadata
 - ✅ Blocked site detection with helpful messaging
+- ✅ Try-first iframe loading with timeout-based failure detection
+- ✅ Confirmed blocklist (25 domains, exact-match, verified in both plugins)
+- ✅ Two distinct blocked messages (known vs detected)
+- ✅ "Report site" link placeholder in status bar
 - ✅ Image bytes via separate messages (no postMessage bloat)
 - ✅ Title truncation with ellipsis
 - ⏳ Validate marker-based placeholder → card replacement flow
@@ -21,6 +25,12 @@
 - Capture a screenshot of the live preview in the panel
 - Place as image on canvas (optional: as card thumbnail replacement)
 - Manual "Screenshot" button in panel + keyboard shortcut
+
+### Blocked site reporting
+- Wire "Report site" link to a form (Google Form or GitHub issue template)
+- Captures URL, hostname, and error context from user
+- Crowdsourced blocklist: review reports, add confirmed domains to BLOCKED_DOMAINS
+- Future: auto-update mechanism for the confirmed list
 
 ### FigJam support
 - Port plugin to work in FigJam (use `createLinkPreviewAsync` for embeds where possible)

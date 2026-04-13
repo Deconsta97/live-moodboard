@@ -63,14 +63,24 @@
 | Placeholder replaced by final card with metadata | ✅ |
 
 ### UC3 — Add blocked site (unknown, detected by timeout)
-**Input:** <!-- _(find a site that blocks iframes but isn't in BLOCKED_DOMAINS)_  -->
+**Input:** Any site not in BLOCKED_DOMAINS that blocks iframes (e.g. a newly discovered domain)
 | Check | Pass? |
 |---|---|
 | Placeholder appears on canvas | ✅ |
-| Panel tries to load iframe | ✅ |
-| After ~8 seconds, fallback detection triggers | 🚫 |
-| Shows blocked state or "Open in browser" available | 🚫 |
+| Panel tries to load iframe (try-first approach) | ✅ |
+| After ~8 seconds, fallback detection triggers | ✅ |
+| Shows "detected" blocked state with distinct message | ✅ |
+| "Report site" link visible in status bar | ✅ |
+| "Open in browser" available | ✅ |
 | Card still gets metadata | ✅ |
+
+**Status:** ✅ FIXED
+- Switched from pre-filtering blocklist to try-first approach
+- Blocklist trimmed to 25 confirmed-blocked domains (verified in both plugins)
+- Exact-match only (no subdomain wildcard) — subdomains get try-first treatment
+- Two distinct blocked messages: "known" vs "detected"
+- "Report site" placeholder link added to status bar
+- See TEST LINKS.md / TEST LINKS.csv for full test data (39 URLs tested)
 
 ### UC4 — Select existing card
 **Input:** Click a `[Moodboard]` card on canvas
@@ -175,15 +185,19 @@
 
 ## Test Sites Reference
 
+Full test data in `TEST LINKS.md` and `TEST LINKS.csv` (39 URLs tested).
+
 | Site | Frameable? | Has OG Image? | Has Favicon? | Notes |
 |---|---|---|---|---|
 | `geniai.framer.website` | Yes | Yes | Yes | Primary test site |
 | `stripe.com` | Test | Yes | Yes | Corporate site |
 | `linear.app` | Test | Yes | Yes | SaaS tool |
-| `google.com` | No (known) | Yes | Yes | Blocked list |
-| `youtube.com` | No (known) | Yes | Yes | Blocked list |
-| `github.com` | No (known) | Yes | Yes | Blocked list |
-| `codepen.io` | No (known) | Yes | Yes | Recently added |
+| `wikipedia.org` | Yes | Yes | Yes | Was in old blocklist — loads fine |
+| `microsoft.com` | Yes | Yes | Yes | Was in old blocklist — loads fine |
+| `google.com` | No (known) | Yes | Yes | Confirmed blocked in both plugins |
+| `youtube.com` | No (known) | Yes | Yes | Confirmed blocked in both plugins |
+| `github.com` | No (known) | Yes | Yes | Confirmed blocked in both plugins |
+| `codepen.io` | No (known) | Yes | Yes | Confirmed blocked in both plugins |
 | `example.com` | Yes | No | No | Tests fallbacks |
 
 ---
@@ -203,12 +217,9 @@
 
 ## Bugs Found
 
-_(Fill in during testing)_
-
-| # | Description | Severity | Status | Console.log |  
+| # | Description | Severity | Status | Notes |  
 |---|---|---|---|---|
-| UC 3.3| Plugin window does not load site (white screen) with no spinner nor fallback to blocked | 🟡 | 🚫 |`Refused to display 'https://antigravity.google/' in a frame because it set 'X-Frame-Options' to 'deny'.`|
-| UC 3.4| Plugin window does not load site (white screen) with no spinner nor fallback to blocked | 🟡 | 🚫 |`Refused to display 'https://antigravity.google/' in a frame because it set 'X-Frame-Options' to 'deny'.`|
-| UC 7.1| Invalid URL validation | 🟡 | ✅ | Added protocol + hostname validation before API call |
-| UC 11.2| Rapid sequential adds — images not landing on correct cards | 🟢 | ✅ | Used Map<operationId> instead of global variables |
-| UC 3.3| Unknown blocked sites — white screen with no fallback UI | 🟡 | 🚫 | Requires timeout detection UI improvement (V2) |
+| UC 3.3 | Unknown blocked sites — white screen with no fallback UI | 🟡 | ✅ | Try-first + 8s timeout detection with "detected" blocked message |
+| UC 3.4 | Known blocked subdomain false negatives (e.g. one.google.com) | 🟡 | ✅ | Switched to exact-match blocklist, subdomains get try-first |
+| UC 7.1 | Invalid URL validation | 🟡 | ✅ | Added protocol + hostname validation before API call |
+| UC 11.2 | Rapid sequential adds — images not landing on correct cards | 🟢 | ✅ | Used Map<operationId> instead of global variables |
